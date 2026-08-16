@@ -1,0 +1,35 @@
+#ifndef BERYL_BLAKE3_WRAPPER_H
+#define BERYL_BLAKE3_WRAPPER_H
+
+#include <vector>
+#include <string>
+#include <cstddef>
+#include <sstream>
+#include <iomanip>
+
+std::vector<unsigned char> Blake3Hash(
+    const std::vector<unsigned char>& data,
+    size_t outlen
+);
+
+std::string Blake3_160(
+    const std::vector<unsigned char>& data
+)
+{
+    auto hash = Blake3Hash(data, 20); // 160-bit
+
+    std::stringstream ss;
+
+    for (unsigned char b : hash)
+    {
+        ss
+            << std::hex
+            << std::setw(2)
+            << std::setfill('0')
+            << (int)b;
+    }
+
+    return ss.str();
+}
+
+#endif

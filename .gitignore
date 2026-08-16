@@ -1,0 +1,32 @@
+# Build output
+src/build/
+
+# Compiled binaries
+src/beryld
+src/beryl-cli
+src/beryl-miner
+src/beryl-wallet
+
+# Wallet / private data
+wallet.dat
+**/wallet.dat
+*.dat
+*.wallet
+*.seed
+
+# Private keys / local secrets
+*.key
+*.pem
+
+# Local runtime data
+data/
+src/data/
+
+# Temporary / backup files
+*.backup
+*.bak
+*.tmp
+
+# OS/editor files
+.DS_Store
+*.swp
