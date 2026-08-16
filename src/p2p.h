@@ -19,7 +19,8 @@ void BroadcastBlock(
 void StartP2P(
     BerylChain& chain,
     UTXOManager& utxoManager,
-    Mempool& mempool
+    Mempool& mempool,
+    const std::string& blockchainFile
 );
 
 // Relay transaksi ke seluruh peer yang sedang terhubung.

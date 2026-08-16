@@ -6,6 +6,7 @@
 #include "blockhash.h"
 #include "blockvalidation.h"
 #include "transaction.h"
+#include "storage.h"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -782,24 +783,16 @@ static bool DeserializeTransaction(
     tx = BerylTransaction();
 
     // ========================================================
-    // TXID
-    // ========================================================
-    if (!ReadString(in, pos, tx.txid))
-        return false;
-
-    // ========================================================
     // NATIVE TRANSACTION TYPE
+    // Canonical serialization uses U32.
     // ========================================================
-    if (pos >= in.size())
-        return false;
+    uint32_t rawType = 0;
 
-    const uint8_t rawType =
-        static_cast<uint8_t>(
-            static_cast<unsigned char>(in[pos++])
-        );
+    if (!ReadU32(in, pos, rawType))
+        return false;
 
     if (rawType >
-        static_cast<uint8_t>(TransactionType::CONTRACT_CALL))
+        static_cast<uint32_t>(TransactionType::CONTRACT_CALL))
         return false;
 
     tx.type =
@@ -807,17 +800,15 @@ static bool DeserializeTransaction(
 
     // ========================================================
     // CONTRACT TYPE
+    // Canonical serialization uses U32.
     // ========================================================
-    if (pos >= in.size())
+    uint32_t rawContractType = 0;
+
+    if (!ReadU32(in, pos, rawContractType))
         return false;
 
-    const uint8_t rawContractType =
-        static_cast<uint8_t>(
-            static_cast<unsigned char>(in[pos++])
-        );
-
     if (rawContractType >
-        static_cast<uint8_t>(TransactionType::CONTRACT_CALL))
+        static_cast<uint32_t>(TransactionType::CONTRACT_CALL))
         return false;
 
     tx.contract.type =
@@ -875,6 +866,16 @@ static bool DeserializeTransaction(
             in,
             pos,
             tx.contract.gasLimit))
+        return false;
+
+    // ========================================================
+    // TXID
+    // Canonical serialization places TXID after gasLimit.
+    // ========================================================
+    if (!ReadString(
+            in,
+            pos,
+            tx.txid))
         return false;
 
     // ========================================================
@@ -1034,6 +1035,12 @@ static bool DeserializeBlock(
             in,
             pos,
             block.header.utxoRoot))
+        return false;
+
+    if (!ReadString(
+            in,
+            pos,
+            block.header.contractRoot))
         return false;
 
     if (!ReadU64(
@@ -1220,7 +1227,8 @@ static bool SendVersion(
 static bool ConnectToPeer(
     const std::string& host,
     uint16_t port,
-    BerylChain& chain
+    BerylChain& chain,
+    const std::string& blockchainFile
 )
 {
     std::cout
@@ -1609,6 +1617,32 @@ static bool ConnectToPeer(
 
     std::cout
         << "P2P SYNC COMPLETE: local height="
+        << chain.GetHeight()
+        << "\n";
+
+    // --------------------------------------------------------
+    // PERSIST INITIAL P2P SYNCHRONIZATION
+    // --------------------------------------------------------
+
+    if (!SaveBlockchain(
+            chain,
+            blockchainFile))
+    {
+        std::cerr
+            << "P2P SYNC ERROR: failed saving blockchain"
+            << " FILE="
+            << blockchainFile
+            << "\n";
+
+        close(socketFd);
+        return false;
+    }
+
+    std::cout
+        << "P2P SYNC: blockchain saved"
+        << " FILE="
+        << blockchainFile
+        << " HEIGHT="
         << chain.GetHeight()
         << "\n";
 
@@ -2261,7 +2295,8 @@ bool IsP2PReady()
 void StartP2P(
     BerylChain& chain,
     UTXOManager& utxoManager,
-    Mempool& mempool
+    Mempool& mempool,
+    const std::string& blockchainFile
 )
 {
     // --------------------------------------------------------
@@ -2353,6 +2388,7 @@ void StartP2P(
         ConnectToPeer,
         host,
         port,
-        std::ref(chain)
+        std::ref(chain),
+        std::cref(blockchainFile)
     ).detach();
 }

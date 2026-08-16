@@ -329,7 +329,8 @@ int main(int argc, char* argv[])
     StartP2P(
         chain,
         utxoManager,
-        mempool
+        mempool,
+        blockchainFile
     );
 
     // ========================================================
